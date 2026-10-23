@@ -1,6 +1,7 @@
 package org.sgcite.attendance;
 
 import org.sgcite.attendance.data.DataStore;
+import org.sgcite.attendance.dsa.BinarySearch;
 import org.sgcite.attendance.dsa.MergeSort;
 import org.sgcite.attendance.models.Event;
 import org.sgcite.attendance.models.Officer;
@@ -24,8 +25,9 @@ public class Milestone1VerificationTest {
         testEventModel();
         testDataStoreSeeding();
         testMergeSortEngine();
+        testBinarySearchEngine();
 
-        System.out.println("\n[SUCCESS] ALL VERIFICATION TESTS PASSED SUCCESSFULLY! (Issues #1 & #2 Verified)");
+        System.out.println("\n[SUCCESS] ALL VERIFICATION TESTS PASSED SUCCESSFULLY! (Milestone 1 Verified)");
     }
 
     private static void testStudentModel() {
@@ -191,5 +193,36 @@ public class Milestone1VerificationTest {
         assert "GAMMA".equals(sample.get(2).getFullName()) : "FIFO stability violation for GAMMA";
 
         System.out.println("  -> MergeSort engine verification PASSED.");
+    }
+
+    private static void testBinarySearchEngine() {
+        System.out.println("[TEST] Verifying BinarySearch Engine (Issue #3)...");
+
+        DataStore.seedData(false);
+        MergeSort.sort(DataStore.students, MergeSort.COMPARE_STUDENT_BY_ID);
+        MergeSort.sort(DataStore.officers, MergeSort.COMPARE_OFFICER_BY_ID);
+
+        // 1. Existing student lookup
+        int juanIdx = BinarySearch.findStudentById(DataStore.students, "24-01492");
+        assert juanIdx >= 0 : "Student 24-01492 not found";
+        assert "DELA CRUZ, JUAN".equals(DataStore.students.get(juanIdx).getFullName());
+
+        // 2. ASCII Mockup Benchmark output
+        BinarySearch.SearchResult<Student> result = BinarySearch.printSearchValidation(DataStore.students, "24-01492");
+        assert result.isFound();
+        assert result.getComparisons() == 9;
+
+        // 3. Non-existing student lookup returns -1
+        assert BinarySearch.findStudentById(DataStore.students, "24-99999") == -1;
+
+        // 4. Officer lookup
+        int presIdx = BinarySearch.findOfficerById(DataStore.officers, "24-00105");
+        assert presIdx >= 0 : "President 24-00105 not found";
+        assert "President".equals(DataStore.officers.get(presIdx).getPosition());
+
+        // 5. Non-existing officer lookup returns -1
+        assert BinarySearch.findOfficerById(DataStore.officers, "NON-OFFICER") == -1;
+
+        System.out.println("  -> BinarySearch engine verification PASSED.");
     }
 }

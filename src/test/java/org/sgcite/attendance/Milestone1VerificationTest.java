@@ -1,15 +1,18 @@
 package org.sgcite.attendance;
 
 import org.sgcite.attendance.data.DataStore;
+import org.sgcite.attendance.dsa.MergeSort;
 import org.sgcite.attendance.models.Event;
 import org.sgcite.attendance.models.Officer;
 import org.sgcite.attendance.models.Student;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
- * Automated Verification Test for Issue #1: Base Models & 1,500-Student Data Generator.
+ * Automated Verification Test for Milestone 1 (Models, Mock Data & DSA Engine).
  */
 public class Milestone1VerificationTest {
 
@@ -20,8 +23,9 @@ public class Milestone1VerificationTest {
         testOfficerModel();
         testEventModel();
         testDataStoreSeeding();
+        testMergeSortEngine();
 
-        System.out.println("\n[SUCCESS] ALL VERIFICATION TESTS PASSED SUCCESSFULLY! (Issue #1 Verified)");
+        System.out.println("\n[SUCCESS] ALL VERIFICATION TESTS PASSED SUCCESSFULLY! (Issues #1 & #2 Verified)");
     }
 
     private static void testStudentModel() {
@@ -143,5 +147,49 @@ public class Milestone1VerificationTest {
         assert firstStudentIdFirstRun.equals(firstStudentIdSecondRun) : "seedData() must be 100% deterministic!";
 
         System.out.println("  -> DataStore seeding and verification PASSED.");
+    }
+
+    private static void testMergeSortEngine() {
+        System.out.println("[TEST] Verifying MergeSort Engine (Issue #2)...");
+
+        // 1. Sort 1,500 students in DataStore by studentId
+        DataStore.seedData(false);
+        MergeSort.sort(DataStore.students, MergeSort.COMPARE_STUDENT_BY_ID);
+
+        // Print ASCII Banner
+        MergeSort.printExecutionSummary();
+
+        assert DataStore.students.size() == 1500 : "Student list count mismatch";
+        for (int i = 0; i < DataStore.students.size() - 1; i++) {
+            String currId = DataStore.students.get(i).getStudentId();
+            String nextId = DataStore.students.get(i + 1).getStudentId();
+            assert currId.compareToIgnoreCase(nextId) <= 0 : "MergeSort order violation: " + currId + " > " + nextId;
+        }
+        assert "24-00001".equals(DataStore.students.get(0).getStudentId()) : "First student ID mismatch";
+        assert "24-01500".equals(DataStore.students.get(1499).getStudentId()) : "Last student ID mismatch";
+
+        // 2. Sort officers
+        MergeSort.sort(DataStore.officers, MergeSort.COMPARE_OFFICER_BY_ID);
+        assert DataStore.officers.size() == 12 : "Officer list count mismatch";
+        for (int i = 0; i < DataStore.officers.size() - 1; i++) {
+            String currId = DataStore.officers.get(i).getStudentId();
+            String nextId = DataStore.officers.get(i + 1).getStudentId();
+            assert currId.compareToIgnoreCase(nextId) <= 0 : "Officer order violation: " + currId + " > " + nextId;
+        }
+
+        // 3. Stability check by section
+        List<Student> sample = new ArrayList<>();
+        sample.add(new Student("24-00001", "ALPHA", "BSIT-2101"));
+        sample.add(new Student("24-00002", "BETA", "BSIT-1101"));
+        sample.add(new Student("24-00003", "GAMMA", "BSIT-2101"));
+        MergeSort.sort(sample, MergeSort.COMPARE_STUDENT_BY_SECTION);
+
+        assert "BSIT-1101".equals(sample.get(0).getSection());
+        assert "BSIT-2101".equals(sample.get(1).getSection());
+        assert "BSIT-2101".equals(sample.get(2).getSection());
+        assert "ALPHA".equals(sample.get(1).getFullName()) : "FIFO stability violation for ALPHA";
+        assert "GAMMA".equals(sample.get(2).getFullName()) : "FIFO stability violation for GAMMA";
+
+        System.out.println("  -> MergeSort engine verification PASSED.");
     }
 }

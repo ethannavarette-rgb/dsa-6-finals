@@ -3,55 +3,117 @@ package org.sgcite.attendance.portals;
 import java.util.Scanner;
 import org.sgcite.attendance.data.DataStore;
 import org.sgcite.attendance.dsa.BinarySearch;
+import org.sgcite.attendance.dsa.CheckInQueue;
 import org.sgcite.attendance.models.Student;
 
 public class StudentPortal {
 
-    public static void startStudentFlow(Scanner scanner) {
-        boolean retryInput = true;
+    public static void startStudentFlow(
+            Scanner scanner, CheckInQueue checkInQueue) {
 
-        while (retryInput) {
+        while (true) {
             System.out.print("Enter Student ID: ");
             String inputId = scanner.nextLine().trim();
 
             int index = BinarySearch.findStudentById(
-                DataStore.students, inputId
-            );
+                    DataStore.students, inputId);
 
             if (index >= 0) {
-                Student matchedStudent = DataStore.students.get(index);
-
-                System.out.println("[✓] Validated: "
-                    + matchedStudent.getStudentId()
-                    + " | " + matchedStudent.getFullName()
-                    + " | Section: " + matchedStudent.getSection());
-
-                System.out.println("Routing to Student Dashboard...");
-                retryInput = false;
-
+                Student student = DataStore.students.get(index);
+                showStudentDashboard(scanner, student, checkInQueue);
+                return;
             } else {
-                System.out.println("[!] ERROR: ID not found");
+                System.out.println("ID not found");
 
-                boolean validChoice = false;
+                if (confirmExit(scanner,
+                        "Exit to Main Role Menu? (YES/NO): ")) {
+                    return;
+                }
+            }
+        }
+    }
 
-                while (!validChoice) {
-                    System.out.print(
-                        "Exit to Main Role Menu? (YES/NO): "
-                    );
+    private static void showStudentDashboard(
+            Scanner scanner, Student student, CheckInQueue checkInQueue) {
 
-                    String choice = scanner.nextLine().trim();
+        while (true) {
+            System.out.println("\n==============================================");
+            System.out.println(">>> STUDENT DASHBOARD | Welcome, "
+                    + student.getFullName() + " ("
+                    + student.getSection() + ")");
+            System.out.println("==============================================");
+            System.out.println("[1] Event Check-In");
+            System.out.println("[2] Submit Attendance Requirement(s)");
+            System.out.println("[3] Exit");
+            System.out.println("----------------------------------------------");
+            System.out.print("Select transaction [1-3]: ");
 
-                    if (choice.equalsIgnoreCase("NO")) {
-                        validChoice = true;
-                    } else if (choice.equalsIgnoreCase("YES")) {
-                        validChoice = true;
-                        retryInput = false;
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    if (student.isCheckedIn()) {
+                        System.out.println(
+                                "[!] You are already checked in.");
+                    } else if (checkInQueue.enqueueCheckIn(student)) {
+                        System.out.println(
+                                "[✓] Check-In Successful! You have been added to the FIFO Check-In Queue.");
                     } else {
                         System.out.println(
-                            "Invalid choice. Please enter YES or NO."
-                        );
+                                "[!] You are already in the check-in queue.");
                     }
-                }
+
+                    if (confirmExit(scanner,
+                            "Exit Student Dashboard? (YES/NO): ")) {
+                        return;
+                    }
+                    break;
+
+                case "2":
+                    if (!student.isCheckedIn()) {
+                        System.out.println(
+                                "[!] You must be checked in before submitting attendance requirements.");
+                    } else if (student.isRequirementSubmitted()) {
+                        System.out.println(
+                                "[!] Your attendance requirement has already been submitted.");
+                    } else {
+                        student.setRequirementSubmitted(true);
+                        System.out.println(
+                                "[✓] Attendance requirement submitted successfully.");
+                    }
+
+                    if (confirmExit(scanner,
+                            "Exit Student Dashboard? (YES/NO): ")) {
+                        return;
+                    }
+                    break;
+
+                case "3":
+                    if (confirmExit(scanner,
+                            "Exit Student Dashboard? (YES/NO): ")) {
+                        return;
+                    }
+                    break;
+
+                default:
+                    System.out.println(
+                            "[!] Invalid option. Please select 1, 2, or 3.");
+            }
+        }
+    }
+
+    private static boolean confirmExit(Scanner scanner, String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String answer = scanner.nextLine().trim();
+
+            if (answer.equalsIgnoreCase("YES")) {
+                return true;
+            } else if (answer.equalsIgnoreCase("NO")) {
+                return false;
+            } else {
+                System.out.println(
+                        "Invalid choice. Please enter YES or NO.");
             }
         }
     }

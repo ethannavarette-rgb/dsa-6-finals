@@ -88,9 +88,10 @@ public class OfficerPortal {
             System.out.println("================================================================================");
             System.out.println("[1] Manage Events");
             System.out.println("[2] Attendance Report");
-            System.out.println("[3] Exit");
+            System.out.println("[3] Member Roster");
+            System.out.println("[4] Exit");
             System.out.println("--------------------------------------------------------------------------------");
-            System.out.print("Select transaction [1-3]: ");
+            System.out.print("Select transaction [1-4]: ");
 
             String choice = scanner.nextLine().trim();
 
@@ -110,13 +111,21 @@ public class OfficerPortal {
                     break;
 
                 case "3":
+                    handleMemberRoster(scanner, auditStack);
+                    if (confirmExit(scanner, "Exit Officer Dashboard? (YES/NO): ")) {
+                        inDashboard = false;
+                    }
+                    break;
+
+                case "4":
+                case "0":
                     if (confirmExit(scanner, "Exit Officer Dashboard? (YES/NO): ")) {
                         inDashboard = false;
                     }
                     break;
 
                 default:
-                    System.out.println("[!] Invalid option. Please select 1, 2, or 3.");
+                    System.out.println("[!] Invalid option. Please select 1, 2, 3, or 4.");
                     break;
             }
         }
@@ -128,6 +137,10 @@ public class OfficerPortal {
 
     public static void runAttendanceReport(CheckInQueue queue) {
         handleAttendanceReport(queue);
+    }
+
+    public static void runMemberRoster(Scanner scanner, OfficerActionStack auditStack) {
+        handleMemberRoster(scanner, auditStack);
     }
 
     private static void handleManageEvents(Scanner scanner, OfficerActionStack auditStack) {
@@ -255,6 +268,100 @@ public class OfficerPortal {
 
         System.out.println("--------------------------------------------------------------------------------");
         System.out.printf("TOTAL ATTENDEES : %,d / %,d Students%n", totalAttendees, totalStudents);
+        System.out.println("================================================================================");
+    }
+
+    private static void handleMemberRoster(Scanner scanner, OfficerActionStack auditStack) {
+        System.out.println("================================================================================");
+        System.out.println(">>> SG CITE MEMBER ROSTER MANAGEMENT");
+        System.out.println("================================================================================");
+        System.out.println("[1] Add New Officer");
+        System.out.println("[2] Remove Officer");
+        System.out.println("[3] View Current Roster");
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.print("Select roster action [1-3]: ");
+
+        String action = scanner.nextLine().trim();
+
+        if (action.equals("2") || action.equalsIgnoreCase("REMOVE") || action.equalsIgnoreCase("DELETE")) {
+            System.out.print("Enter Officer Student ID to Remove: ");
+            String idToRemove = scanner.nextLine().trim();
+            int index = BinarySearch.findOfficerById(DataStore.officers, idToRemove);
+            if (index >= 0) {
+                Officer removed = DataStore.officers.remove(index);
+                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                System.out.println("[-] Removed Officer: [" + removed.getStudentId() + "] " + removed.getFullName());
+                System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
+                if (auditStack != null) {
+                    auditStack.pushAction("Removed officer: " + removed.getStudentId() + " (" + removed.getPosition() + ")");
+                }
+            } else {
+                System.out.println("[!] ERROR: Officer ID not found on whitelist.");
+            }
+            displayOfficerRoster();
+        } else if (action.equals("3") || action.equalsIgnoreCase("VIEW") || action.equalsIgnoreCase("LIST")) {
+            displayOfficerRoster();
+        } else {
+            String studentId;
+            if (!action.equals("1") && !action.isEmpty()) {
+                studentId = action;
+            } else {
+                System.out.print("Enter Officer Student ID : ");
+                studentId = scanner.nextLine().trim();
+            }
+
+            int existingIndex = BinarySearch.findOfficerById(DataStore.officers, studentId);
+            if (existingIndex >= 0) {
+                Officer existing = DataStore.officers.get(existingIndex);
+                System.out.println("[!] Officer already exists: " + existing.getFullName() + ". Updating details...");
+            }
+
+            System.out.print("Enter Officer Full Name  : ");
+            String fullName = scanner.nextLine().trim();
+
+            System.out.print("Enter Officer Password   : ");
+            String password = scanner.nextLine().trim();
+            if (password.isEmpty()) {
+                password = "sgcite2026";
+            }
+
+            System.out.print("Enter Officer Position   : ");
+            String position = scanner.nextLine().trim();
+
+            if (existingIndex >= 0) {
+                Officer existing = DataStore.officers.get(existingIndex);
+                if (!fullName.isEmpty()) existing.setFullName(fullName);
+                existing.setPassword(password);
+                if (!position.isEmpty()) existing.setPosition(position);
+                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                System.out.println("[+] Updated Officer: [" + existing.getStudentId() + "] " + existing.getFullName() + " (" + existing.getPosition() + ")");
+                System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
+                if (auditStack != null) {
+                    auditStack.pushAction("Updated officer: " + existing.getStudentId() + " (" + existing.getPosition() + ")");
+                }
+            } else {
+                Officer newOfficer = new Officer(studentId, fullName, password, position);
+                DataStore.officers.add(newOfficer);
+                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                System.out.println("[+] Added New Officer: [" + newOfficer.getStudentId() + "] " + newOfficer.getFullName() + " (" + newOfficer.getPosition() + ")");
+                System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
+                if (auditStack != null) {
+                    auditStack.pushAction("Added officer: " + newOfficer.getStudentId() + " (" + newOfficer.getPosition() + ")");
+                }
+            }
+
+            displayOfficerRoster();
+        }
+    }
+
+    private static void displayOfficerRoster() {
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.printf("UPDATED SG CITE OFFICER ROSTER (%d Members):%n", DataStore.officers.size());
+        for (int i = 0; i < DataStore.officers.size(); i++) {
+            Officer off = DataStore.officers.get(i);
+            String idAndName = "[" + off.getStudentId() + "] " + off.getFullName();
+            System.out.printf("%d. %-34s | %s%n", (i + 1), idAndName, off.getPosition());
+        }
         System.out.println("================================================================================");
     }
 }

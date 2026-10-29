@@ -1,9 +1,11 @@
 package org.sgcite.attendance;
 
 import org.sgcite.attendance.data.DataStore;
+import org.sgcite.attendance.dsa.BinarySearch;
 import org.sgcite.attendance.dsa.CheckInQueue;
 import org.sgcite.attendance.dsa.OfficerActionStack;
 import org.sgcite.attendance.models.Event;
+import org.sgcite.attendance.models.Officer;
 import org.sgcite.attendance.models.Student;
 import org.sgcite.attendance.portals.OfficerPortal;
 
@@ -16,16 +18,18 @@ public class OfficerPortalVerificationTest {
 
     public static void main(String[] args) {
         System.out.println("================================================================================");
-        System.out.println(">>> RUNNING OFFICER PORTAL VERIFICATION TEST (Issue #8)");
+        System.out.println(">>> RUNNING OFFICER PORTAL VERIFICATION TEST (Issues #8 & #9)");
         System.out.println("================================================================================");
 
         testMethodSignatures();
         testManageEvents();
         testAttendanceReport();
-        testEndToEndOfficerFlow();
+        testMemberRosterAddAndReindex();
+        testMemberRosterRemoveAndReindex();
+        testEndToEndOfficerFlowWithRoster();
 
         System.out.println("================================================================================");
-        System.out.println("[SUCCESS] All OfficerPortal Issue #8 verification tests passed successfully!");
+        System.out.println("[SUCCESS] All OfficerPortal Issue #8 and #9 verification tests passed successfully!");
         System.out.println("================================================================================");
     }
 
@@ -38,6 +42,10 @@ public class OfficerPortalVerificationTest {
             Method m2 = OfficerPortal.class.getDeclaredMethod("handleAttendanceReport", CheckInQueue.class);
             assert Modifier.isPrivate(m2.getModifiers()) : "handleAttendanceReport must be private";
             assert Modifier.isStatic(m2.getModifiers()) : "handleAttendanceReport must be static";
+
+            Method m3 = OfficerPortal.class.getDeclaredMethod("handleMemberRoster", Scanner.class, OfficerActionStack.class);
+            assert Modifier.isPrivate(m3.getModifiers()) : "handleMemberRoster must be private";
+            assert Modifier.isStatic(m3.getModifiers()) : "handleMemberRoster must be static";
 
             System.out.println("[✓] Exact method signatures verified via reflection.");
         } catch (NoSuchMethodException e) {
@@ -120,18 +128,91 @@ public class OfficerPortalVerificationTest {
         System.out.println("[✓] testAttendanceReport passed.");
     }
 
-    private static void testEndToEndOfficerFlow() {
+    private static void testMemberRosterAddAndReindex() {
+        DataStore.seedData(false);
+        assert DataStore.officers.size() == 12 : "Expected 12 initial officers";
+
+        OfficerActionStack auditStack = new OfficerActionStack();
+        String simulatedInput = String.join("\n",
+                "1",
+                "24-00881",
+                "NAVARETTE, ETHAN",
+                "sgcite2026",
+                "VP for Internal Affairs"
+        ) + "\n";
+
+        Scanner scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
+        OfficerPortal.runMemberRoster(scanner, auditStack);
+
+        assert DataStore.officers.size() == 13 : "Officers count should be 13 after addition";
+
+        int index = BinarySearch.findOfficerById(DataStore.officers, "24-00881");
+        assert index >= 0 : "New officer must be indexable via BinarySearch";
+        Officer addedOfficer = DataStore.officers.get(index);
+        assert "NAVARETTE, ETHAN".equals(addedOfficer.getFullName()) : "Officer name mismatch";
+        assert "VP for Internal Affairs".equals(addedOfficer.getPosition()) : "Officer position mismatch";
+
+        // Verify sorted order across the entire list
+        for (int i = 0; i < DataStore.officers.size() - 1; i++) {
+            String currentId = DataStore.officers.get(i).getStudentId();
+            String nextId = DataStore.officers.get(i + 1).getStudentId();
+            assert currentId.compareToIgnoreCase(nextId) <= 0 : "Officers must remain sorted by ID: " + currentId + " > " + nextId;
+        }
+
+        String lastAction = auditStack.popLastAction();
+        assert lastAction.contains("24-00881") : "Audit stack must record officer addition: " + lastAction;
+
+        System.out.println("[✓] testMemberRosterAddAndReindex passed.");
+    }
+
+    private static void testMemberRosterRemoveAndReindex() {
+        DataStore.seedData(false);
+        int initialCount = DataStore.officers.size();
+
+        OfficerActionStack auditStack = new OfficerActionStack();
+        String simulatedInput = String.join("\n",
+                "2",
+                "24-00780"
+        ) + "\n";
+
+        Scanner scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
+        OfficerPortal.runMemberRoster(scanner, auditStack);
+
+        assert DataStore.officers.size() == initialCount - 1 : "Officers count should decrease by 1";
+        int index = BinarySearch.findOfficerById(DataStore.officers, "24-00780");
+        assert index == -1 : "Removed officer must no longer exist in whitelist";
+
+        for (int i = 0; i < DataStore.officers.size() - 1; i++) {
+            String currentId = DataStore.officers.get(i).getStudentId();
+            String nextId = DataStore.officers.get(i + 1).getStudentId();
+            assert currentId.compareToIgnoreCase(nextId) <= 0 : "Officers must remain sorted after removal";
+        }
+
+        String lastAction = auditStack.popLastAction();
+        assert lastAction.contains("24-00780") : "Audit stack must record officer removal: " + lastAction;
+
+        System.out.println("[✓] testMemberRosterRemoveAndReindex passed.");
+    }
+
+    private static void testEndToEndOfficerFlowWithRoster() {
         DataStore.seedData(false);
 
         CheckInQueue queue = new CheckInQueue();
         OfficerActionStack auditStack = new OfficerActionStack();
 
+        // 1. Enter officer login (PUREZA, IRISH MAY: 24-00105 / sgcite2026)
+        // 2. Select [3] Member Roster
+        // 3. Select [3] View Current Roster
+        // 4. Confirm exit dashboard? NO
+        // 5. Select [4] Exit
+        // 6. Confirm exit dashboard? YES
         String simulatedInput = String.join("\n",
                 "24-00105",
                 "sgcite2026",
-                "2",
-                "NO",
                 "3",
+                "3",
+                "NO",
+                "4",
                 "YES"
         ) + "\n";
 
@@ -141,6 +222,6 @@ public class OfficerPortalVerificationTest {
         String recentAction = auditStack.popLastAction();
         assert recentAction.contains("24-00105") : "Audit stack must record login: " + recentAction;
 
-        System.out.println("[✓] testEndToEndOfficerFlow passed.");
+        System.out.println("[✓] testEndToEndOfficerFlowWithRoster passed.");
     }
 }

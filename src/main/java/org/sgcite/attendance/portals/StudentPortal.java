@@ -65,10 +65,10 @@ public class StudentPortal {
                                 "[!] You are already checked in.");
                     } else if (checkInQueue.enqueueCheckIn(student)) {
                         System.out.println(
-                                "[✓] Check-In Successful! Your check-in has been recorded.");
+                                "[✓] Check-in request received! Please wait for officer confirmation before submitting requirements.");
                     } else {
                         System.out.println(
-                                "[!] Your check-in has already been submitted.");
+                                "[!] Your check-in request has already been submitted and is pending officer confirmation.");
                     }
 
                     if (confirmExit(scanner,
@@ -79,8 +79,13 @@ public class StudentPortal {
 
                 case "2":
                     if (!student.isCheckedIn()) {
-                        System.out.println(
-                                "[!] You must be checked in before submitting attendance requirements.");
+                        if (checkInQueue != null && checkInQueue.isPending(student.getStudentId())) {
+                            System.out.println(
+                                    "[!] Your check-in is currently pending officer confirmation. Please wait for confirmation before submitting attendance requirements.");
+                        } else {
+                            System.out.println(
+                                    "[!] You must submit a check-in request and receive officer confirmation before submitting attendance requirements.");
+                        }
                     } else if (student.isRequirementSubmitted()) {
                         System.out.println(
                                 "[!] Your attendance requirement has already been submitted.");

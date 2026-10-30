@@ -16,6 +16,13 @@ import java.util.Scanner;
 
 public class OfficerPortalVerificationTest {
 
+    private static void assertTrue(boolean condition, String message) {
+        if (!condition) {
+            System.err.println("[FAIL] " + message);
+            throw new AssertionError(message);
+        }
+    }
+
     public static void main(String[] args) {
         System.out.println("================================================================================");
         System.out.println(">>> RUNNING OFFICER PORTAL VERIFICATION TEST (Issues #8 & #9)");
@@ -27,6 +34,8 @@ public class OfficerPortalVerificationTest {
         testMemberRosterAddAndReindex();
         testMemberRosterRemoveAndReindex();
         testEndToEndOfficerFlowWithRoster();
+        testInvalidAuthentication();
+        testAuditHistoryLIFO();
 
         System.out.println("================================================================================");
         System.out.println("[SUCCESS] All OfficerPortal Issue #8 and #9 verification tests passed successfully!");
@@ -220,8 +229,48 @@ public class OfficerPortalVerificationTest {
         OfficerPortal.startOfficerFlow(scanner, queue, auditStack);
 
         String recentAction = auditStack.popLastAction();
-        assert recentAction.contains("24-00105") : "Audit stack must record login: " + recentAction;
+        assertTrue(recentAction.contains("24-00105"), "Audit stack must record login: " + recentAction);
 
         System.out.println("[✓] testEndToEndOfficerFlowWithRoster passed.");
+    }
+
+    private static void testInvalidAuthentication() {
+        DataStore.seedData(false);
+        CheckInQueue queue = new CheckInQueue();
+        OfficerActionStack auditStack = new OfficerActionStack();
+
+        // 1. Nonexistent officer ID -> Access Denied -> Exit? NO -> Valid ID with wrong password -> Access Denied -> Exit? YES
+        String simulatedInput = String.join("\n",
+                "24-99999",
+                "somepass",
+                "NO",
+                "24-00105",
+                "wrongpassword",
+                "YES"
+        ) + "\n";
+
+        Scanner scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
+        OfficerPortal.startOfficerFlow(scanner, queue, auditStack);
+
+        assertTrue(auditStack.isEmpty(), "Audit stack should be empty when authentication fails");
+        System.out.println("[✓] testInvalidAuthentication passed.");
+    }
+
+    private static void testAuditHistoryLIFO() {
+        OfficerActionStack auditStack = new OfficerActionStack();
+        // Empty history display
+        OfficerPortal.runViewActionHistory(auditStack);
+
+        // Populated history
+        auditStack.pushAction("Event created: General Assembly");
+        auditStack.pushAction("Added officer: 24-00881 (VP Internal)");
+        auditStack.pushAction("Attendance report generated: 5 check-ins processed");
+
+        assertTrue(auditStack.size() == 3, "Stack size should be 3");
+        assertTrue("Attendance report generated: 5 check-ins processed".equals(auditStack.peekLastAction()),
+                "Newest action should be at the top of stack");
+
+        OfficerPortal.runViewActionHistory(auditStack);
+        System.out.println("[✓] testAuditHistoryLIFO passed.");
     }
 }

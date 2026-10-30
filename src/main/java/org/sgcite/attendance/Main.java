@@ -24,7 +24,7 @@ public class Main {
 
         // 2. Pre-sort students & officers by ID using MergeSort.sort()
         MergeSort.sort(DataStore.students, MergeSort.COMPARE_STUDENT_BY_ID);
-        MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+        MergeSort.sortOfficersById(DataStore.officers);
         MergeSort.printExecutionSummary("DataStore.students", DataStore.students.size(), "Student::getStudentId (Ascending)");
 
         // 3. Initialize CheckInQueue & OfficerActionStack
@@ -45,6 +45,10 @@ public class Main {
             System.out.println("--------------------------------------------------------------------------------");
             System.out.print("Enter choice: ");
 
+            if (!scanner.hasNextLine()) {
+                isRunning = false;
+                break;
+            }
             String choice = scanner.nextLine().trim();
 
             switch (choice) {

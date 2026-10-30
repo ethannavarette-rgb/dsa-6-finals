@@ -21,12 +21,16 @@ public class CheckInQueue {
             return false;
         }
 
+        if (student.isCheckedIn()) {
+            return false;
+        }
+
         String studentId = student.getStudentId();
         if (studentId == null || studentId.trim().isEmpty()) {
             return false;
         }
 
-        String normalizedId = studentId.trim();
+        String normalizedId = studentId.trim().toUpperCase();
         if (checkedInIds.contains(normalizedId)) {
             return false;
         }
@@ -48,16 +52,20 @@ public class CheckInQueue {
                 continue;
             }
 
+            boolean wasAlreadyCheckedIn = student.isCheckedIn();
             student.setCheckedIn(true);
+
             String section = student.getSection();
             if (section == null || section.trim().isEmpty()) {
                 section = "UNKNOWN";
             }
 
             String normalizedSection = section.trim();
-            int currentCount = sectionMap.getOrDefault(normalizedSection, 0);
-            sectionMap.put(normalizedSection, currentCount + 1);
-            processed++;
+            if (!wasAlreadyCheckedIn) {
+                int currentCount = sectionMap.getOrDefault(normalizedSection, 0);
+                sectionMap.put(normalizedSection, currentCount + 1);
+                processed++;
+            }
         }
 
         return processed;
@@ -65,5 +73,34 @@ public class CheckInQueue {
 
     public int getPendingCount() {
         return fifoQueue.size();
+    }
+
+    public boolean isEmpty() {
+        return fifoQueue.isEmpty();
+    }
+
+    public boolean isPending(String studentId) {
+        if (studentId == null || studentId.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = studentId.trim().toUpperCase();
+        for (Student s : fifoQueue) {
+            if (s != null && s.getStudentId() != null && s.getStudentId().trim().equalsIgnoreCase(normalized)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean contains(String studentId) {
+        if (studentId == null || studentId.trim().isEmpty()) {
+            return false;
+        }
+        return checkedInIds.contains(studentId.trim().toUpperCase());
+    }
+
+    public void clear() {
+        fifoQueue.clear();
+        checkedInIds.clear();
     }
 }

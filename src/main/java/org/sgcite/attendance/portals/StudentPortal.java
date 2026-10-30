@@ -13,6 +13,9 @@ public class StudentPortal {
 
         while (true) {
             System.out.print("Enter Student ID: ");
+            if (!scanner.hasNextLine()) {
+                return;
+            }
             String inputId = scanner.nextLine().trim();
 
             int index = BinarySearch.findStudentById(
@@ -48,11 +51,16 @@ public class StudentPortal {
             System.out.println("----------------------------------------------");
             System.out.print("Select transaction [1-3]: ");
 
+            if (!scanner.hasNextLine()) {
+                return;
+            }
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
                 case "1":
-                    if (student.isCheckedIn()) {
+                    if (checkInQueue == null) {
+                        System.out.println("[!] Check-in queue is currently unavailable.");
+                    } else if (student.isCheckedIn()) {
                         System.out.println(
                                 "[!] You are already checked in.");
                     } else if (checkInQueue.enqueueCheckIn(student)) {
@@ -89,6 +97,7 @@ public class StudentPortal {
                     break;
 
                 case "3":
+                case "EXIT":
                     if (confirmExit(scanner,
                             "Exit Student Dashboard? (YES/NO): ")) {
                         return;
@@ -105,6 +114,9 @@ public class StudentPortal {
     private static boolean confirmExit(Scanner scanner, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!scanner.hasNextLine()) {
+                return true;
+            }
             String answer = scanner.nextLine().trim();
 
             if (answer.equalsIgnoreCase("YES")) {

@@ -28,18 +28,26 @@ public class OfficerPortal {
         boolean retryLogin = true;
         while (retryLogin) {
             System.out.print("Enter Student ID: ");
+            if (!scanner.hasNextLine()) {
+                return;
+            }
             String inputId = scanner.nextLine().trim();
 
             System.out.print("Enter Password: ");
+            if (!scanner.hasNextLine()) {
+                return;
+            }
             String inputPassword = scanner.nextLine();
 
             int officerIndex = BinarySearch.findOfficerById(
                     DataStore.officers, inputId);
             if (officerIndex >= 0) {
                 Officer officer = DataStore.officers.get(officerIndex);
-                if (officer.getPassword().equals(inputPassword)) {
-                    auditStack.pushAction("Officer login: "
-                            + officer.getStudentId() + " (" + officer.getPosition() + ")");
+                if (officer != null && officer.getPassword() != null && officer.getPassword().equals(inputPassword)) {
+                    if (auditStack != null) {
+                        auditStack.pushAction("Officer login: "
+                                + officer.getStudentId() + " (" + officer.getPosition() + ")");
+                    }
                     showOfficerDashboard(scanner, officer, queue, auditStack);
                     return;
                 }
@@ -59,6 +67,9 @@ public class OfficerPortal {
     private static boolean confirmExit(Scanner scanner, String prompt) {
         while (true) {
             System.out.print(prompt);
+            if (!scanner.hasNextLine()) {
+                return true;
+            }
             String answer = scanner.nextLine().trim();
 
             if (answer.equalsIgnoreCase("YES")) {
@@ -89,10 +100,14 @@ public class OfficerPortal {
             System.out.println("[1] Manage Events");
             System.out.println("[2] Attendance Report");
             System.out.println("[3] Member Roster");
-            System.out.println("[4] Exit");
+            System.out.println("[4] View Action History");
+            System.out.println("[5] Exit");
             System.out.println("--------------------------------------------------------------------------------");
-            System.out.print("Select transaction [1-4]: ");
+            System.out.print("Select transaction [1-5]: ");
 
+            if (!scanner.hasNextLine()) {
+                return;
+            }
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
@@ -104,7 +119,7 @@ public class OfficerPortal {
                     break;
 
                 case "2":
-                    handleAttendanceReport(queue);
+                    handleAttendanceReport(queue, auditStack);
                     if (confirmExit(scanner, "Exit Officer Dashboard? (YES/NO): ")) {
                         inDashboard = false;
                     }
@@ -118,14 +133,22 @@ public class OfficerPortal {
                     break;
 
                 case "4":
+                    handleViewActionHistory(auditStack);
+                    if (confirmExit(scanner, "Exit Officer Dashboard? (YES/NO): ")) {
+                        inDashboard = false;
+                    }
+                    break;
+
+                case "5":
                 case "0":
+                case "EXIT":
                     if (confirmExit(scanner, "Exit Officer Dashboard? (YES/NO): ")) {
                         inDashboard = false;
                     }
                     break;
 
                 default:
-                    System.out.println("[!] Invalid option. Please select 1, 2, 3, or 4.");
+                    System.out.println("[!] Invalid option. Please select 1, 2, 3, 4, or 5.");
                     break;
             }
         }
@@ -136,11 +159,27 @@ public class OfficerPortal {
     }
 
     public static void runAttendanceReport(CheckInQueue queue) {
-        handleAttendanceReport(queue);
+        handleAttendanceReport(queue, null);
+    }
+
+    public static void runAttendanceReport(CheckInQueue queue, OfficerActionStack auditStack) {
+        handleAttendanceReport(queue, auditStack);
     }
 
     public static void runMemberRoster(Scanner scanner, OfficerActionStack auditStack) {
         handleMemberRoster(scanner, auditStack);
+    }
+
+    public static void runViewActionHistory(OfficerActionStack auditStack) {
+        handleViewActionHistory(auditStack);
+    }
+
+    private static void handleViewActionHistory(OfficerActionStack auditStack) {
+        if (auditStack == null) {
+            System.out.println("No recent actions.");
+            return;
+        }
+        auditStack.displayAuditHistory();
     }
 
     private static void handleManageEvents(Scanner scanner, OfficerActionStack auditStack) {
@@ -162,21 +201,27 @@ public class OfficerPortal {
         System.out.println("--------------------------------------------------------------------------------");
 
         System.out.print("Enter WHAT (Event Name/Title)       : ");
+        if (!scanner.hasNextLine()) return;
         String what = scanner.nextLine().trim();
 
         System.out.print("Enter WHO (Target Participants)     : ");
+        if (!scanner.hasNextLine()) return;
         String who = scanner.nextLine().trim();
 
         System.out.print("Enter WHEN (Date & Time Schedule)   : ");
+        if (!scanner.hasNextLine()) return;
         String when = scanner.nextLine().trim();
 
         System.out.print("Enter WHERE (Venue/Location)        : ");
+        if (!scanner.hasNextLine()) return;
         String where = scanner.nextLine().trim();
 
         System.out.print("Enter WHY (Objective/Purpose)       : ");
+        if (!scanner.hasNextLine()) return;
         String why = scanner.nextLine().trim();
 
         System.out.print("Enter HOW (Mechanics/Execution)     : ");
+        if (!scanner.hasNextLine()) return;
         String how = scanner.nextLine().trim();
 
         Event newEvent = new Event(what, who, when, where, why, how);
@@ -191,9 +236,17 @@ public class OfficerPortal {
     }
 
     private static void handleAttendanceReport(CheckInQueue queue) {
+        handleAttendanceReport(queue, null);
+    }
+
+    private static void handleAttendanceReport(CheckInQueue queue, OfficerActionStack auditStack) {
         int flushed = 0;
         if (queue != null) {
             flushed = queue.flushQueueToAttendance(DataStore.sectionAttendanceMap);
+        }
+
+        if (auditStack != null) {
+            auditStack.pushAction("Attendance report generated: " + flushed + " check-in(s) processed");
         }
 
         System.out.println("================================================================================");
@@ -215,21 +268,7 @@ public class OfficerPortal {
         }
 
         // 2. Uses MergeSort to sort checked-in students by Section/Block & Name
-        Comparator<Student> bySectionAndName = (s1, s2) -> {
-            if (s1 == null && s2 == null) return 0;
-            if (s1 == null) return -1;
-            if (s2 == null) return 1;
-            String sec1 = s1.getSection() != null ? s1.getSection() : "";
-            String sec2 = s2.getSection() != null ? s2.getSection() : "";
-            int secComp = sec1.compareToIgnoreCase(sec2);
-            if (secComp != 0) {
-                return secComp;
-            }
-            String name1 = s1.getFullName() != null ? s1.getFullName() : "";
-            String name2 = s2.getFullName() != null ? s2.getFullName() : "";
-            return name1.compareToIgnoreCase(name2);
-        };
-        MergeSort.sort(attendees, bySectionAndName);
+        MergeSort.sort(attendees, MergeSort.COMPARE_STUDENT_BY_SECTION_AND_NAME);
 
         // 3. Count attendees and submitted requirements per section
         Map<String, Integer> attendeesPerSection = new LinkedHashMap<>();
@@ -281,15 +320,17 @@ public class OfficerPortal {
         System.out.println("--------------------------------------------------------------------------------");
         System.out.print("Select roster action [1-3]: ");
 
+        if (!scanner.hasNextLine()) return;
         String action = scanner.nextLine().trim();
 
         if (action.equals("2") || action.equalsIgnoreCase("REMOVE") || action.equalsIgnoreCase("DELETE")) {
             System.out.print("Enter Officer Student ID to Remove: ");
+            if (!scanner.hasNextLine()) return;
             String idToRemove = scanner.nextLine().trim();
             int index = BinarySearch.findOfficerById(DataStore.officers, idToRemove);
             if (index >= 0) {
                 Officer removed = DataStore.officers.remove(index);
-                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                MergeSort.sortOfficersById(DataStore.officers);
                 System.out.println("[-] Removed Officer: [" + removed.getStudentId() + "] " + removed.getFullName());
                 System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
                 if (auditStack != null) {
@@ -301,14 +342,10 @@ public class OfficerPortal {
             displayOfficerRoster();
         } else if (action.equals("3") || action.equalsIgnoreCase("VIEW") || action.equalsIgnoreCase("LIST")) {
             displayOfficerRoster();
-        } else {
-            String studentId;
-            if (!action.equals("1") && !action.isEmpty()) {
-                studentId = action;
-            } else {
-                System.out.print("Enter Officer Student ID : ");
-                studentId = scanner.nextLine().trim();
-            }
+        } else if (action.equals("1") || action.equalsIgnoreCase("ADD")) {
+            System.out.print("Enter Officer Student ID : ");
+            if (!scanner.hasNextLine()) return;
+            String studentId = scanner.nextLine().trim();
 
             int existingIndex = BinarySearch.findOfficerById(DataStore.officers, studentId);
             if (existingIndex >= 0) {
@@ -317,15 +354,18 @@ public class OfficerPortal {
             }
 
             System.out.print("Enter Officer Full Name  : ");
+            if (!scanner.hasNextLine()) return;
             String fullName = scanner.nextLine().trim();
 
             System.out.print("Enter Officer Password   : ");
+            if (!scanner.hasNextLine()) return;
             String password = scanner.nextLine().trim();
             if (password.isEmpty()) {
                 password = "sgcite2026";
             }
 
             System.out.print("Enter Officer Position   : ");
+            if (!scanner.hasNextLine()) return;
             String position = scanner.nextLine().trim();
 
             if (existingIndex >= 0) {
@@ -333,7 +373,7 @@ public class OfficerPortal {
                 if (!fullName.isEmpty()) existing.setFullName(fullName);
                 existing.setPassword(password);
                 if (!position.isEmpty()) existing.setPosition(position);
-                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                MergeSort.sortOfficersById(DataStore.officers);
                 System.out.println("[+] Updated Officer: [" + existing.getStudentId() + "] " + existing.getFullName() + " (" + existing.getPosition() + ")");
                 System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
                 if (auditStack != null) {
@@ -342,7 +382,7 @@ public class OfficerPortal {
             } else {
                 Officer newOfficer = new Officer(studentId, fullName, password, position);
                 DataStore.officers.add(newOfficer);
-                MergeSort.sort(DataStore.officers, Comparator.comparing(Officer::getStudentId));
+                MergeSort.sortOfficersById(DataStore.officers);
                 System.out.println("[+] Added New Officer: [" + newOfficer.getStudentId() + "] " + newOfficer.getFullName() + " (" + newOfficer.getPosition() + ")");
                 System.out.println("[*] Re-indexing Officer Whitelist via Merge Sort (O(n log n))... Done.");
                 if (auditStack != null) {
@@ -351,6 +391,8 @@ public class OfficerPortal {
             }
 
             displayOfficerRoster();
+        } else {
+            System.out.println("[!] Invalid roster action. Please select 1, 2, or 3.");
         }
     }
 

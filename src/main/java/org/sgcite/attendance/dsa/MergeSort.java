@@ -52,6 +52,25 @@ public class MergeSort {
     };
 
     /**
+     * Comparator for sorting Student records by Section and then by Full Name.
+     * Preserves strict null safety.
+     */
+    public static final Comparator<Student> COMPARE_STUDENT_BY_SECTION_AND_NAME = (s1, s2) -> {
+        if (s1 == null && s2 == null) return 0;
+        if (s1 == null) return -1;
+        if (s2 == null) return 1;
+        String sec1 = s1.getSection() != null ? s1.getSection() : "";
+        String sec2 = s2.getSection() != null ? s2.getSection() : "";
+        int secComp = sec1.compareToIgnoreCase(sec2);
+        if (secComp != 0) {
+            return secComp;
+        }
+        String name1 = s1.getFullName() != null ? s1.getFullName() : "";
+        String name2 = s2.getFullName() != null ? s2.getFullName() : "";
+        return name1.compareToIgnoreCase(name2);
+    };
+
+    /**
      * Comparator for sorting Officer records by Student ID in ascending lexicographical order.
      * Includes null-safety guards.
      */
@@ -74,6 +93,8 @@ public class MergeSort {
     public static final Comparator<Officer> OFFICER_BY_STUDENT_ID = COMPARE_OFFICER_BY_ID;
     public static final Comparator<Student> BY_STUDENT_ID = COMPARE_STUDENT_BY_ID;
     public static final Comparator<Student> BY_SECTION = COMPARE_STUDENT_BY_SECTION;
+    public static final Comparator<Student> STUDENT_BY_SECTION_AND_NAME = COMPARE_STUDENT_BY_SECTION_AND_NAME;
+    public static final Comparator<Student> bySectionAndName = COMPARE_STUDENT_BY_SECTION_AND_NAME;
 
     public static Comparator<Student> studentById() {
         return COMPARE_STUDENT_BY_ID;

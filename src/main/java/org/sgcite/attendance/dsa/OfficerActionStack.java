@@ -11,13 +11,29 @@ public class OfficerActionStack {
     private final Deque<String> actionStack = new ArrayDeque<>();
 
     public void pushAction(String actionLog) {
-        if (actionLog != null) {
+        if (actionLog != null && !actionLog.trim().isEmpty()) {
             actionStack.push(actionLog.trim());
         }
     }
 
     public String popLastAction() {
         return actionStack.isEmpty() ? "No recent actions." : actionStack.pop();
+    }
+
+    public String peekLastAction() {
+        return actionStack.isEmpty() ? "No recent actions." : actionStack.peek();
+    }
+
+    public boolean isEmpty() {
+        return actionStack.isEmpty();
+    }
+
+    public int size() {
+        return actionStack.size();
+    }
+
+    public void clear() {
+        actionStack.clear();
     }
 
     public void displayAuditHistory() {

@@ -10,12 +10,20 @@ import org.sgcite.attendance.models.Student;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Automated Verification Test for Milestone 1 (Models, Mock Data & DSA Engine).
  */
 public class Milestone1VerificationTest {
+
+    private static void assertTrue(boolean condition, String message) {
+        if (!condition) {
+            System.err.println("[FAIL] " + message);
+            throw new AssertionError(message);
+        }
+    }
 
     public static void main(String[] args) {
         System.out.println(">>> RUNNING MILESTONE 1 VERIFICATION TESTS <<<\n");
@@ -87,10 +95,18 @@ public class Milestone1VerificationTest {
         DataStore.seedData(true);
 
         // 1. Verify exact counts
-        assert DataStore.students.size() == 1500 : "Expected exactly 1,500 students, found " + DataStore.students.size();
-        assert DataStore.officers.size() == 12 : "Expected exactly 12 officers, found " + DataStore.officers.size();
-        assert DataStore.events.size() == 1 : "Expected exactly 1 event, found " + DataStore.events.size();
-        assert DataStore.sectionAttendanceMap.size() == 15 : "Expected 15 sections in sectionAttendanceMap, found " + DataStore.sectionAttendanceMap.size();
+        assertTrue(DataStore.students.size() == 1500, "Expected exactly 1,500 students, found " + DataStore.students.size());
+        assertTrue(DataStore.officers.size() == 12, "Expected exactly 12 officers, found " + DataStore.officers.size());
+        assertTrue(DataStore.events.size() == 1, "Expected exactly 1 event, found " + DataStore.events.size());
+        assertTrue(DataStore.sectionAttendanceMap.size() == 15, "Expected 15 sections in sectionAttendanceMap, found " + DataStore.sectionAttendanceMap.size());
+
+        // 1b. Verify exact section distribution: 15 sections, exactly 100 students each
+        Map<String, Integer> counts = DataStore.getSectionCounts();
+        assertTrue(counts.size() == 15, "Expected 15 sections represented in DataStore, found " + counts.size());
+        for (String sec : DataStore.SECTIONS) {
+            int secCount = counts.getOrDefault(sec, 0);
+            assertTrue(secCount == 100, "Expected exactly 100 students in " + sec + ", found " + secCount);
+        }
 
         // 2. Verify all 1,500 students have unique IDs
         Set<String> uniqueIds = new HashSet<>();

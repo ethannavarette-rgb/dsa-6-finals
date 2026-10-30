@@ -104,11 +104,48 @@ public class DataStore {
             generatedStudents.add(new Student(studentId, fullName, section));
         }
 
-        // Re-balance section assignments so that BSIT-2101 maintains exactly 100 students
+        // Re-balance section assignments so that every section maintains exactly 100 students
         // Count students per section and adjust if needed
         Map<String, Integer> counts = new HashMap<>();
         for (Student s : generatedStudents) {
             counts.put(s.getSection(), counts.getOrDefault(s.getSection(), 0) + 1);
+        }
+
+        // Deterministic rebalancing:
+        // Benchmark overrides (i=105 and i=1492) added surplus to BSIT-2101 and caused deficits
+        // in BSIT-4103 and BSIT-2103. Reassign non-benchmark students from surplus to deficit sections.
+        for (String deficitSection : SECTIONS) {
+            while (counts.getOrDefault(deficitSection, 0) < 100) {
+                String surplusSection = null;
+                for (String sec : SECTIONS) {
+                    if (counts.getOrDefault(sec, 0) > 100) {
+                        surplusSection = sec;
+                        break;
+                    }
+                }
+                if (surplusSection == null) {
+                    break;
+                }
+
+                for (Student s : generatedStudents) {
+                    if (s.getSection().equals(surplusSection)
+                            && !"24-00105".equals(s.getStudentId())
+                            && !"24-01492".equals(s.getStudentId())) {
+                        s.setSection(deficitSection);
+                        counts.put(surplusSection, counts.get(surplusSection) - 1);
+                        counts.put(deficitSection, counts.get(deficitSection) + 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Validate 100 students per section invariant
+        for (String sec : SECTIONS) {
+            int c = counts.getOrDefault(sec, 0);
+            if (c != 100) {
+                throw new IllegalStateException("Section " + sec + " does not have exactly 100 students: " + c);
+            }
         }
 
         // Deterministically shuffle students so records are unsorted for MergeSort to index
@@ -145,6 +182,14 @@ public class DataStore {
         if (printSummary) {
             printInitializationSummary();
         }
+    }
+
+    public static Map<String, Integer> getSectionCounts() {
+        Map<String, Integer> sectionCounts = new HashMap<>();
+        for (Student s : students) {
+            sectionCounts.put(s.getSection(), sectionCounts.getOrDefault(s.getSection(), 0) + 1);
+        }
+        return sectionCounts;
     }
 
     /**

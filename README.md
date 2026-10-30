@@ -19,9 +19,24 @@ A robust, crash-proof Java console application demonstrating core **Object-Orien
 
 3. **Algorithm & Data Structure Suitability (1,500 Students)**:
    - **Custom FIFO Queue (`CheckInQueue`)**: Accurately simulates the physical entrance scanner line where students arrive in real time. $\mathcal{O}(1)$ arrival enqueueing protected by an $\mathcal{O}(1)$ duplicate-detection `HashSet`.
-   - **Custom LIFO Stack (`OfficerActionStack`)**: Maintains chronological administrative audit logs and rollback history for officer operations. $\mathcal{O}(1)$ push and pop operations.
+   - **Custom LIFO Stack (`OfficerActionStack`)**: Maintains chronological administrative audit logs for officer operations (audit trail, newest action first; not a transaction rollback mechanism). $\mathcal{O}(1)$ push and pop operations.
    - **Divide-and-Conquer Merge Sort (`MergeSort`)**: Guaranteed $\mathcal{O}(n \log n)$ performance across best, average, and worst cases with strict stability (`<= 0`) preserving FIFO arrival order for identical keys.
-   - **Binary Search Engine (`BinarySearch`)**: High-performance $\mathcal{O}(\log n)$ searching. Locates any student out of 1,500 in **at most 11 comparisons** ($\lceil \log_2(1,500) \rceil = 11$).
+   - **Binary Search Engine (`BinarySearch`)**: High-performance $\mathcal{O}(\log n)$ searching. Locates any student out of 1,500 in **at most 11 comparisons** ($\lceil \log_2(1,500) \rceil = 11$). Verified by exhaustive test over all 1,500 items.
+
+---
+
+## 🏛️ Application Architecture & Canonical Entry Point
+
+The repository contains two implementations:
+
+1. **Canonical Enterprise Application** (Primary):
+   - **Package**: `org.sgcite.attendance` (under `src/main/java/` and `src/test/java/`)
+   - **Entry Point**: `org.sgcite.attendance.Main`
+   - **Scope**: 1,500 students, 15 academic block sections (strictly 100 students per section), 12 initial officer credentials, 5W1H event structures, FIFO entrance queue, LIFO administrative audit stack, Student Portal, and Officer Portal.
+2. **Legacy Milestone Prototype** (Secondary):
+   - **Package**: `sgcite` (under `src/sgcite/`)
+   - **Entry Point**: `sgcite.Main`
+   - **Scope**: Earlier educational prototype for 300–500 attendees and single-queue simulation. Maintained intact for historical milestone defense. Both implementations compile independently without cross-package coupling.
 
 ---
 
@@ -76,15 +91,38 @@ javac -d bin src/main/java/org/sgcite/attendance/*.java src/main/java/org/sgcite
 java -cp bin org.sgcite.attendance.Main
 ```
 
-### 3. Run Automated Verification Tests:
+### 3. Run Automated Verification Tests (Assertions Enabled):
 ```bash
 # Compile all source and test classes:
 find src -name "*.java" > all_sources.txt
 javac -d bin @all_sources.txt
 
-# Run Officer Portal Verification Test (Issues #7, #8, #9):
-java -cp bin org.sgcite.attendance.OfficerPortalVerificationTest
+# Run Canonical Application Tests (with -ea assertions enabled):
+java -ea -cp bin org.sgcite.attendance.MainVerificationTest
+java -ea -cp bin org.sgcite.attendance.OfficerPortalVerificationTest
+java -ea -cp bin org.sgcite.attendance.MergeSortVerificationTest
+java -ea -cp bin org.sgcite.attendance.BinarySearchVerificationTest
+java -ea -cp bin org.sgcite.attendance.Milestone1VerificationTest
+java -ea -cp bin org.sgcite.attendance.dsa.DsaQueueStackVerificationTest
 
-# Run Main Console Loop Integration & QA Test (Issue #10):
-java -cp bin org.sgcite.attendance.MainVerificationTest
+# Run Legacy Prototype Verification Test (Optional):
+java -ea -cp bin sgcite.SystemVerificationTest
 ```
+
+---
+
+## 🔄 Student Check-In & Requirement Submission Lifecycle
+
+To prevent invalid submissions and maintain transaction integrity:
+1. **Student Queueing**: When a student logs in to the Student Portal and selects `[1] Event Check-In`, they are enqueued into the FIFO `CheckInQueue` (pending status). Duplicate arrivals are immediately rejected by the internal `HashSet`.
+2. **Officer Queue Processing**: An authenticated officer reviews pending check-ins and processes them via `[2] Attendance Report`, which flushes the queue, transitions `student.isCheckedIn()` to `true`, and increments section totals without duplicate counting.
+3. **Requirement Submission**: The student logs in and selects `[2] Submit Attendance Requirement(s)`. The system verifies `student.isCheckedIn() == true` before accepting requirements. Duplicate submissions are rejected.
+4. **Audit Visibility**: The Officer Portal displays submitted requirement counts per academic block alongside attendee numbers, and all operations are recorded in the LIFO `OfficerActionStack`.
+
+---
+
+## ⚠️ Known Limitations & Academic Scope
+
+1. **In-Memory Volatility**: Data is held in memory during the execution session and resets on application shutdown. This is by design for Data Structures and Algorithms laboratory evaluation.
+2. **Pedagogical Credential Storage**: Officer passwords are stored as in-memory strings (`sgcite2026`) for demonstration purposes. In a production enterprise system, passwords would be hashed using bcrypt or Argon2.
+3. **Single-Process Console Context**: The application is intended for single-session terminal interactions with simulated multi-role flows.

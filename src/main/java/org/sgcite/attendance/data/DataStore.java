@@ -176,7 +176,7 @@ public class DataStore {
             "October 24, 2026 | 08:00 AM - 05:00 PM",
             "DLSL Sentrum / CBEAM Hall",
             "Orientation on Departmental Policies, Project Showcases, and DSA Benchmarking",
-            "Tap RFID / Enter Student ID at Entrance Scanner Queue and Submit Requirements"
+            "Tap RFID / Enter Student ID at Entrance Scanner and Submit Requirements"
         ));
 
         if (printSummary) {

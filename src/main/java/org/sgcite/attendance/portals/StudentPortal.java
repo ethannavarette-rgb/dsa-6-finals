@@ -59,16 +59,16 @@ public class StudentPortal {
             switch (choice) {
                 case "1":
                     if (checkInQueue == null) {
-                        System.out.println("[!] Check-in queue is currently unavailable.");
+                        System.out.println("[!] Check-in service is currently unavailable.");
                     } else if (student.isCheckedIn()) {
                         System.out.println(
                                 "[!] You are already checked in.");
                     } else if (checkInQueue.enqueueCheckIn(student)) {
                         System.out.println(
-                                "[✓] Check-In Successful! You have been added to the FIFO Check-In Queue.");
+                                "[✓] Check-In Successful! Your check-in has been recorded.");
                     } else {
                         System.out.println(
-                                "[!] You are already in the check-in queue.");
+                                "[!] Your check-in has already been submitted.");
                     }
 
                     if (confirmExit(scanner,

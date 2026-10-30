@@ -252,7 +252,7 @@ public class OfficerPortal {
         System.out.println("================================================================================");
         System.out.println(">>> SG CITE ATTENDANCE REPORT (PER SECTION / BLOCK)");
         System.out.println("================================================================================");
-        System.out.printf("Queue Flushed   : %d pending FIFO check-ins processed.%n", flushed);
+        System.out.printf("Attendance Synced: %d pending check-in(s) processed.%n", flushed);
         System.out.println("--------------------------------------------------------------------------------");
         System.out.printf("%-24s%-16s%s%n", "SECTION / BLOCK", "ATTENDEES", "REQUIREMENTS SUBMITTED");
         System.out.println("--------------------------------------------------------------------------------");
